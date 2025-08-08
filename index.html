@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Translator App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
+        <h1 class="app-title">🌐 Translator App</h1>
+
+        <textarea id="input-text" placeholder="Speak or type something..."></textarea>
+
+        <select id="language-select">
+            {% for lang in languages %}
+                <option value="{{ lang }}">{{ lang }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="btn-group">
+            <button onclick="startListening()">🎤 Voice Input</button>
+            <button onclick="translateText()">🌍 Translate</button>
+            <button onclick="speakOutput()">🔊 Speak Output</button>
+        </div>
+
+        <div class="output">
+            <h2>Translated Text</h2>
+            <p id="translated-text"></p>
+        </div>
+    </div>
+
+    <script>
+        function startListening() {
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = "en-US"; 
+            recognition.onresult = function(event) {
+                document.getElementById("input-text").value = event.results[0][0].transcript;
+            };
+            recognition.start();
+        }
+
+        async function translateText() {
+            const text = document.getElementById("input-text").value;
+            const lang = document.getElementById("language-select").value;
+
+            const response = await fetch("/translate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text, target_lang: lang })
+            });
+
+            const result = await response.json();
+            if (result.translated_text) {
+                document.getElementById("translated-text").textContent = result.translated_text;
+            } else {
+                alert(result.error || "Translation failed.");
+            }
+        }
+
+        async function speakOutput() {
+            const text = document.getElementById("translated-text").textContent;
+            const lang = document.getElementById("language-select").value;
+
+            const response = await fetch("/speak", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text, lang: getLanguageCode(lang) })
+            });
+
+            const result = await response.json();
+            if (result.audio_file) {
+                const audio = new Audio(result.audio_file);
+                audio.play();
+            } else {
+                alert(result.error || "Speech playback failed.");
+            }
+        }
+
+        function getLanguageCode(language) {
+            const map = {
+                'English': 'en',
+                'Hindi': 'hi',
+                'French': 'fr',
+                'German': 'de',
+                'Spanish': 'es',
+                'Japanese': 'ja',
+                'Chinese': 'zh-cn',
+                'Arabic': 'ar',
+                'Russian': 'ru'
+            };
+            return map[language] || 'en';
+        }
+    </script>
+</body>
+</html>
